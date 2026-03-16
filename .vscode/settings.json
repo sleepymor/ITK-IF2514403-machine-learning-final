@@ -1,0 +1,7 @@
+{
+  "notebook.markup.fontSize": 14,
+  "notebook.markdown.lineHeight": 32,
+  "notebook.markup.fontFamily": "Inter, 'Helvetica Neue', Arial, sans-serif",
+  "notebook.compactView": true
+  // "notebook.inlineValues": "on"
+}
