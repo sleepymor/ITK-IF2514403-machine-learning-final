@@ -8,12 +8,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Breast Cancer Prediction", page_icon="🩺", layout="wide")
 
-# dataset = test_dataloader()
-
-# df = pd.DataFrame(
-#     dataset.data,
-#     columns=dataset.feature_names
-# )
+#Insert data laoder here!!!!!!!!!!!!
 
 # Initialize page state
 if "page" not in st.session_state:
