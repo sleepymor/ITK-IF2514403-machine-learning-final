@@ -2,8 +2,9 @@ import streamlit as st
 import joblib as jb
 import pandas as pd
 
-# model_kNN = jb.load("kNN.pkl")
-# model_RF = jb.load("RF.pkl")
+# model_LogReg = jb.load("models/LogReg.pkl")
+# model_kNN = jb.load("models/kNN.pkl")
+# model_RF = jb.load("models/RF.pkl")
 
 st.set_page_config(page_title="Breast Cancer Prediction", page_icon="🩺", layout="wide")
 
