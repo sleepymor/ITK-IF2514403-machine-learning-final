@@ -1,5 +1,5 @@
 .venv
-
+.vscode
 week-1/dataset/
 week-1/output/
 ML_A_BreastCancer_K2_Modeling.ipynb
