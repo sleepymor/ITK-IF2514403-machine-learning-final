@@ -1,7 +1,8 @@
 import streamlit as st
 import joblib as jb
 import pandas as pd
-import numpy as np # WAJIB ditambahkan untuk np.array
+import numpy as np
+import matplotlib.pyplot as plt # Perbaikan import matplotlib
 
 st.set_page_config(page_title="Breast Cancer Prediction", page_icon="🩺", layout="wide")
 
@@ -15,10 +16,11 @@ df = load_data()
 @st.cache_resource
 def load_components():
     scaler = jb.load("scaler.pkl")
+    # Memuat model versi PCA Pipeline yang sudah kalian export
     models = {
-        "Logistic Regression": jb.load("model_LogReg.pkl"),
-        "KNN": jb.load("model_kNN.pkl"),
-        "Random Forest": jb.load("model_RF.pkl")
+        "Logistic Regression": jb.load("model_LogReg_PCA.pkl"),
+        "KNN": jb.load("model_kNN_PCA.pkl"),
+        "Random Forest": jb.load("model_RF_PCA.pkl")
     }
     return scaler, models
 
@@ -68,8 +70,6 @@ elif page == "Dataset":
     st.dataframe(df.describe())
 
 elif page == "Visualization":
-    import matplotlib.pyplot as plt
-
     st.title("Visualization")
     st.subheader("Diagnosis Distribution")
     diagnosis_count = df["diagnosis"].value_counts()
@@ -78,7 +78,7 @@ elif page == "Visualization":
     st.pyplot(fig)
 
     st.subheader("Correlation Heatmap")
-    # Hanya hitung korelasi untuk kolom numerik biar ga error
+    # Hanya menghitung korelasi untuk kolom numerik agar tidak error
     numeric_df = df.select_dtypes(include=[np.number]) 
     corr = numeric_df.corr()
     fig2, ax2 = plt.subplots(figsize=(12, 10))
@@ -114,20 +114,15 @@ elif page == "Prediction":
         fractal_dimension_mean = st.number_input("Fractal Dimension Mean", min_value=0.0, value=0.06)
 
     if st.button("Predict"):
-        # Sisa 20 fitur bawaan yang belum diinput
+        # Menyesuaikan sisa fitur dummy agar total matriks input pas 34 fitur 
+        # (10 input manual + 20 dummy + 4 feature engineering)
         remaining_features = [0] * 20
 
-        # --- HITUNG 4 FITUR TAMBAHAN (FEATURE ENGINEERING) ---
-        # 1. area_perimeter_ratio
+        # --- HITUNG FITUR TAMBAHAN (FEATURE ENGINEERING) ---
         area_perimeter_ratio = area_mean / perimeter_mean if perimeter_mean != 0 else 0
-        
-        # 2. radius_growth_ratio (Karna radius_worst ga diinput = 0, maka rasionya 0)
-        radius_growth_ratio = 0
-        
-        # 3. concavity_score
+        radius_growth_ratio = 0 # Default karena radius_worst tidak diinput manual
         concavity_score = concavity_mean + concave_points_mean
         
-        # 4. RadiusCategory (Ordinal Encoding: 0=Small, 1=Medium, 2=Large)
         if radius_mean < 12:
             radius_category = 0
         elif 12 <= radius_mean < 18:
@@ -135,7 +130,7 @@ elif page == "Prediction":
         else:
             radius_category = 2
 
-        # Gabungkan semua jadi tepat 34 fitur sesuai urutan dataset Colab-mu
+        # Susun array data sesuai urutan matriks training kalian
         input_data = np.array(
             [
                 [
@@ -149,7 +144,7 @@ elif page == "Prediction":
                     concave_points_mean,
                     symmetry_mean,
                     fractal_dimension_mean,
-                    *remaining_features,       # Fitur 11-30
+                    *remaining_features,       # Menutup kolom fitur 11 s.d 30
                     area_perimeter_ratio,      # Fitur 31
                     radius_growth_ratio,       # Fitur 32
                     concavity_score,           # Fitur 33
@@ -158,10 +153,10 @@ elif page == "Prediction":
             ]
         )
 
-        # Scaling
+        # 1. Jalankan proses scaling menggunakan objek scaler bawaan
         input_scaled = scaler.transform(input_data)
 
-        # Prediction
+        # 2. Jalankan prediksi (Pipeline akan otomatis memproses PCA 34 -> 11 fitur di balik layar)
         prediction = model.predict(input_scaled)[0]
         probability = model.predict_proba(input_scaled)[0]
 
