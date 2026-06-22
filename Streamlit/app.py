@@ -13,11 +13,11 @@ def load_dataset():
 
 @st.cache_resource
 def load_models():
-    scaler_obj = joblib.load("scaler.pkl")
+    scaler_obj = joblib.load("Streamlit/scaler.pkl")
     ml_models = {
-        "Logistic Regression": joblib.load("model_LogReg_PCA.pkl"),
-        "KNN": joblib.load("model_kNN_PCA.pkl"),
-        "Random Forest": joblib.load("model_RF_PCA.pkl")
+        "Logistic Regression": joblib.load("Streamlit/model_LogReg_PCA.pkl"),
+        "KNN": joblib.load("Streamlit/model_kNN_PCA.pkl"),
+        "Random Forest": joblib.load("Streamlit/model_RF_PCA.pkl")
     }
     return scaler_obj, ml_models
 
