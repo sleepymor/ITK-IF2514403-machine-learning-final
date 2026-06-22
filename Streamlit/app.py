@@ -9,7 +9,7 @@ st.set_page_config(page_title="Breast Cancer Predictor", page_icon="🩺", layou
 
 @st.cache_data
 def load_dataset():
-    return pd.read_csv("breast_cancer_raw.csv") 
+    return pd.read_csv("Streamlit/breast_cancer_raw.csv") 
 
 @st.cache_resource
 def load_models():
