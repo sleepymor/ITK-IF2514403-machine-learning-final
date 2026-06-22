@@ -1,174 +1,155 @@
-import streamlit as st
-import joblib as jb
+import joblib
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt # Perbaikan import matplotlib
+import matplotlib.pyplot as plt
+import streamlit as st
 
-st.set_page_config(page_title="Breast Cancer Prediction", page_icon="🩺", layout="wide")
+# Konfigurasi awal halaman
+st.set_page_config(page_title="Breast Cancer Predictor", page_icon="🩺", layout="wide")
 
-# --- DATA LOADER ---
 @st.cache_data
-def load_data():
+def load_dataset():
     return pd.read_csv("breast_cancer_raw.csv") 
 
-df = load_data()
-
 @st.cache_resource
-def load_components():
-    scaler = jb.load("scaler.pkl")
-    # Memuat model versi PCA Pipeline yang sudah kalian export
-    models = {
-        "Logistic Regression": jb.load("model_LogReg_PCA.pkl"),
-        "KNN": jb.load("model_kNN_PCA.pkl"),
-        "Random Forest": jb.load("model_RF_PCA.pkl")
+def load_models():
+    scaler_obj = joblib.load("scaler.pkl")
+    ml_models = {
+        "Logistic Regression": joblib.load("model_LogReg_PCA.pkl"),
+        "KNN": joblib.load("model_kNN_PCA.pkl"),
+        "Random Forest": joblib.load("model_RF_PCA.pkl")
     }
-    return scaler, models
+    return scaler_obj, ml_models
 
-scaler, models = load_components()
-# -------------------
+# Load data dan model ke memory
+df = load_dataset()
+scaler, models = load_models()
 
-# Initialize page state
-if "page" not in st.session_state:
-    st.session_state.page = "Home"
+# --- Setup Navigasi Sidebar ---
+st.sidebar.title("Navigation")
+menu_options = ["Home", "Dataset", "Visualization", "Prediction"]
 
-# Sidebar buttons
-with st.sidebar:
-    st.title("Navigation")
-    if st.button("Home"):
-        st.session_state.page = "Home"
-    if st.button("Dataset"):
-        st.session_state.page = "Dataset"
-    if st.button("Visualization"):
-        st.session_state.page = "Visualization"
-    if st.button("Prediction"):
-        st.session_state.page = "Prediction"
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "Home"
 
-# Current page
-page = st.session_state.page
+# Bikin tombol sidebar secara dinamis
+for option in menu_options:
+    if st.sidebar.button(option, use_container_width=True):
+        st.session_state.current_page = option
 
+page = st.session_state.current_page
+
+# --- Halaman Home ---
 if page == "Home":
     st.title("Breast Cancer Prediction App")
-    st.write("""
-    This application predicts whether a breast tumor is:
-    - Benign
-    - Malignant
+    st.markdown("""
+    Aplikasi ini memprediksi apakah tumor payudara termasuk:
+    - **Benign** (Jinak)
+    - **Malignant** (Ganas)
 
-    using Machine Learning models:
+    Menggunakan model Machine Learning:
     - Logistic Regression
     - K-Nearest Neighbors
     - Random Forest
     """)
+    
     st.subheader("Dataset Shape")
-    st.write(df.shape)
+    st.write(f"Total baris dan kolom: {df.shape}")
+    
     st.subheader("Dataset Preview")
     st.dataframe(df.head())
 
+# --- Halaman Dataset ---
 elif page == "Dataset":
     st.title("Dataset")
     st.dataframe(df)
+    
     st.subheader("Statistics")
     st.dataframe(df.describe())
 
+# --- Halaman Visualisasi ---
 elif page == "Visualization":
     st.title("Visualization")
+    
     st.subheader("Diagnosis Distribution")
-    diagnosis_count = df["diagnosis"].value_counts()
+    diag_counts = df["diagnosis"].value_counts()
     fig, ax = plt.subplots()
-    ax.bar(["Benign", "Malignant"], diagnosis_count.values)
+    ax.bar(["Benign", "Malignant"], diag_counts.values, color=['#4CAF50', '#F44336'])
     st.pyplot(fig)
 
     st.subheader("Correlation Heatmap")
-    # Hanya menghitung korelasi untuk kolom numerik agar tidak error
-    numeric_df = df.select_dtypes(include=[np.number]) 
-    corr = numeric_df.corr()
-    fig2, ax2 = plt.subplots(figsize=(12, 10))
-    heatmap = ax2.imshow(corr)
-    plt.colorbar(heatmap)
+    num_df = df.select_dtypes(include=[np.number]) 
+    fig2, ax2 = plt.subplots(figsize=(10, 8))
+    im = ax2.imshow(num_df.corr(), cmap="coolwarm")
+    plt.colorbar(im)
     st.pyplot(fig2)
 
+# --- Halaman Prediksi ---
 elif page == "Prediction":
     st.title("Prediction")
-    st.write("Input tumor measurements below.")
+    st.write("Silakan masukkan nilai pengukuran tumor di bawah ini.")
 
-    model_name = st.segmented_control(
+    selected_model = st.segmented_control(
         "Choose Model",
-        ["Logistic Regression", "KNN", "Random Forest"],
-        default="Logistic Regression",
+        options=["Logistic Regression", "KNN", "Random Forest"],
+        default="Logistic Regression"
     )
+    
+    active_model = models[selected_model]
 
-    model = models[model_name]
-
-    col1, col2 = st.columns(2)
-    with col1:
-        radius_mean = st.number_input("Radius Mean", min_value=0.0, value=14.0)
-        texture_mean = st.number_input("Texture Mean", min_value=0.0, value=19.0)
-        perimeter_mean = st.number_input("Perimeter Mean", min_value=0.0, value=90.0)
+    # Layout form input pakai 2 kolom
+    left_col, right_col = st.columns(2)
+    
+    with left_col:
+        rad_mean = st.number_input("Radius Mean", min_value=0.0, value=14.0)
+        tex_mean = st.number_input("Texture Mean", min_value=0.0, value=19.0)
+        per_mean = st.number_input("Perimeter Mean", min_value=0.0, value=90.0)
         area_mean = st.number_input("Area Mean", min_value=0.0, value=600.0)
-        smoothness_mean = st.number_input("Smoothness Mean", min_value=0.0, value=0.1)
+        smooth_mean = st.number_input("Smoothness Mean", min_value=0.0, value=0.1)
 
-    with col2:
-        compactness_mean = st.number_input("Compactness Mean", min_value=0.0, value=0.1)
-        concavity_mean = st.number_input("Concavity Mean", min_value=0.0, value=0.1)
-        concave_points_mean = st.number_input("Concave Points Mean", min_value=0.0, value=0.05)
-        symmetry_mean = st.number_input("Symmetry Mean", min_value=0.0, value=0.2)
-        fractal_dimension_mean = st.number_input("Fractal Dimension Mean", min_value=0.0, value=0.06)
+    with right_col:
+        comp_mean = st.number_input("Compactness Mean", min_value=0.0, value=0.1)
+        conc_mean = st.number_input("Concavity Mean", min_value=0.0, value=0.1)
+        conc_pts_mean = st.number_input("Concave Points Mean", min_value=0.0, value=0.05)
+        sym_mean = st.number_input("Symmetry Mean", min_value=0.0, value=0.2)
+        frac_dim_mean = st.number_input("Fractal Dimension Mean", min_value=0.0, value=0.06)
 
-    if st.button("Predict"):
-        # Menyesuaikan sisa fitur dummy agar total matriks input pas 34 fitur 
-        # (10 input manual + 20 dummy + 4 feature engineering)
-        remaining_features = [0] * 20
-
-        # --- HITUNG FITUR TAMBAHAN (FEATURE ENGINEERING) ---
-        area_perimeter_ratio = area_mean / perimeter_mean if perimeter_mean != 0 else 0
-        radius_growth_ratio = 0 # Default karena radius_worst tidak diinput manual
-        concavity_score = concavity_mean + concave_points_mean
+    # Eksekusi prediksi
+    if st.button("Predict", type="primary"):
+        # Fitur dummy (index 10-29) untuk melengkapi bentuk matriks
+        dummy_vals = [0] * 20
         
-        if radius_mean < 12:
-            radius_category = 0
-        elif 12 <= radius_mean < 18:
-            radius_category = 1
-        else:
-            radius_category = 2
+        # Ekstraksi feature engineering tambahan
+        area_perim_ratio = area_mean / per_mean if per_mean != 0 else 0
+        rad_growth = 0 
+        conc_score = conc_mean + conc_pts_mean
+        
+        # Pengelompokan kategori radius 
+        rad_cat = 0 if rad_mean < 12 else (1 if rad_mean < 18 else 2)
 
-        # Susun array data sesuai urutan matriks training kalian
-        input_data = np.array(
-            [
-                [
-                    radius_mean,
-                    texture_mean,
-                    perimeter_mean,
-                    area_mean,
-                    smoothness_mean,
-                    compactness_mean,
-                    concavity_mean,
-                    concave_points_mean,
-                    symmetry_mean,
-                    fractal_dimension_mean,
-                    *remaining_features,       # Menutup kolom fitur 11 s.d 30
-                    area_perimeter_ratio,      # Fitur 31
-                    radius_growth_ratio,       # Fitur 32
-                    concavity_score,           # Fitur 33
-                    radius_category            # Fitur 34
-                ]
-            ]
-        )
+        # Susun array 34 fitur
+        X_new = np.array([[
+            rad_mean, tex_mean, per_mean, area_mean, smooth_mean,
+            comp_mean, conc_mean, conc_pts_mean, sym_mean, frac_dim_mean,
+            *dummy_vals, 
+            area_perim_ratio, rad_growth, conc_score, rad_cat
+        ]])
 
-        # 1. Jalankan proses scaling menggunakan objek scaler bawaan
-        input_scaled = scaler.transform(input_data)
+        # Standarisasi data input
+        X_scaled = scaler.transform(X_new)
 
-        # 2. Jalankan prediksi (Pipeline akan otomatis memproses PCA 34 -> 11 fitur di balik layar)
-        prediction = model.predict(input_scaled)[0]
-        probability = model.predict_proba(input_scaled)[0]
+        # Hasil prediksi (pipeline menangani proses PCA)
+        pred_class = active_model.predict(X_scaled)[0]
+        pred_proba = active_model.predict_proba(X_scaled)[0]
 
+        # Tampilkan output ke user
+        st.divider()
         st.subheader("Prediction Result")
-        if prediction == 1:
+        
+        if pred_class == 1:
             st.error("Malignant Tumor Detected")
         else:
             st.success("Benign Tumor Detected")
 
-        st.subheader("Prediction Probability")
-        st.write(f"Benign: {probability[0] * 100:.2f}%")
-        st.write(f"Malignant: {probability[1] * 100:.2f}%")
-
-        st.subheader("Selected Model")
-        st.write(model_name)
+        st.write(f"**Probability:** Benign ({pred_proba[0]:.1%}) | Malignant ({pred_proba[1]:.1%})")
+        st.caption(f"Model used: {selected_model}")
